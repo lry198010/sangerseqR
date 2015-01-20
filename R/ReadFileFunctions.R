@@ -103,7 +103,7 @@ read.scf <- function (filename)
       SInt8(rawBaseMat[,7]),
       SInt8(rawBaseMat[,8])
       )
-    res@basecalls <- paste(RTC(rawBaseMat[,9], multiple=TRUE), collapse="")
+    res@basecalls <- RTC(rawBaseMat[,9], multiple=TRUE)
     res@basecalls <- gsub("-", "N", res@basecalls)
   }
   
@@ -187,6 +187,9 @@ read.abif <- function (filename) {
     res@directory@dataoffset <- c(res@directory@dataoffset, 
                                   SInt32(direntry[21:24]))
   }
+  #fix for error in some .ab1 files that have the wrong data type for the 
+  #PCON fields. Usually is 2 ("character") but should be 1 ("Uint8")
+  res@directory@elementtype[res@directory@name == "PCON"] <- as.integer(1)
 
   #get data list
   res@data <- vector("list", length(res@directory@name))
@@ -207,16 +210,8 @@ read.abif <- function (filename) {
     data <- rawdata[debinraw:(debinraw + numelements * elementsize)]
     if (elementtype == 1) 
       res@data[[i]] <- UInt8(data, n = numelements)
-    if (elementtype == 2) {
-      res@data[[i]] <- tryCatch(RTC(data), finally = paste(rawToChar(data, 
-                  multiple = TRUE), collapse = ""), 
-                  error = function(er) {
-                  cat(paste("an error was detected with the following message:",
-                            er, 
-                            " but this error was fixed\n", 
-                            sep = " "))
-                            })
-    }
+    if (elementtype == 2) 
+      res@data[[i]] <- RTC(data)
     if (elementtype == 3) 
       res@data[[i]] <- UInt16(data, n = numelements)
     if (elementtype == 4) 
